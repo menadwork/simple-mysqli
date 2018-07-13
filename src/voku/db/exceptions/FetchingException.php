@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace voku\db\exceptions;
 
 /**
- * Class DBGoneAwayException
+ * Class FetchingException
  */
-class DBGoneAwayException extends \Exception
+class FetchingException extends \Exception
 {
 
 }

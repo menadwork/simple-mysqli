@@ -1,13 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace voku\db;
 
 use voku\db\exceptions\DBGoneAwayException;
 use voku\db\exceptions\QueryException;
-use voku\helper\Bootup;
 
 /**
- * Prepare: this handles the prepare-statement from "DB"-Class
+ * Prepare: This class can handle the prepare-statement from the "DB"-class.
  *
  * @package   voku\db
  */
@@ -32,7 +33,7 @@ final class Prepare extends \mysqli_stmt
   /**
    * @var array $_boundParams - array of arrays containing values that have been bound to the query as parameters
    */
-  private $_boundParams = array();
+  private $_boundParams = [];
 
   /**
    * @var DB
@@ -50,7 +51,7 @@ final class Prepare extends \mysqli_stmt
    * @param DB     $db
    * @param string $query
    */
-  public function __construct(DB $db, $query)
+  public function __construct(DB $db, string $query)
   {
     $this->_db = $db;
     $this->_debug = $db->getDebugger();
@@ -74,9 +75,9 @@ final class Prepare extends \mysqli_stmt
    *
    * @return array
    */
-  private function _buildArguments()
+  private function _buildArguments(): array
   {
-    $arguments = array();
+    $arguments = [];
     $arguments[0] = '';
 
     foreach ($this->_boundParams as $param) {
@@ -95,7 +96,7 @@ final class Prepare extends \mysqli_stmt
    * @return array 0 => "$value" escaped<br />
    *               1 => "$valueForSqlWithBoundParameters" for insertion into the interpolated query string
    */
-  private function _prepareValue(&$param)
+  private function _prepareValue(array &$param): array
   {
     $type = $param['type']; // 'i', 'b', 's', 'd'
     $value = $param['value'];
@@ -113,13 +114,13 @@ final class Prepare extends \mysqli_stmt
       $valueForSqlWithBoundParameters = $value;
     }
 
-    return array($value, $valueForSqlWithBoundParameters);
+    return [$value, $valueForSqlWithBoundParameters];
   }
 
   /**
    * @return int
    */
-  public function affected_rows()
+  public function affected_rows(): int
   {
     return $this->affected_rows;
   }
@@ -136,74 +137,36 @@ final class Prepare extends \mysqli_stmt
    * INFO: We have to explicitly declare all parameters as references, otherwise it does not seem possible to pass them
    * on without losing the reference property.
    *
-   * @param mixed  $v1
-   * @param mixed  $v2
-   * @param mixed  $v3
-   * @param mixed  $v4
-   * @param mixed  $v5
-   * @param mixed  $v6
-   * @param mixed  $v7
-   * @param mixed  $v8
-   * @param mixed  $v9
-   * @param mixed  $v10
-   * @param mixed  $v11
-   * @param mixed  $v12
-   * @param mixed  $v13
-   * @param mixed  $v14
-   * @param mixed  $v15
-   * @param mixed  $v16
-   * @param mixed  $v17
-   * @param mixed  $v18
-   * @param mixed  $v19
-   * @param mixed  $v20
-   * @param mixed  $v21
-   * @param mixed  $v22
-   * @param mixed  $v23
-   * @param mixed  $v24
-   * @param mixed  $v25
-   * @param mixed  $v26
-   * @param mixed  $v27
-   * @param mixed  $v28
-   * @param mixed  $v29
-   * @param mixed  $v30
-   * @param mixed  $v31
-   * @param mixed  $v32
-   * @param mixed  $v33
-   * @param mixed  $v34
-   * @param mixed  $v35
+   * @param mixed  ...$v
    *
-   * @return mixed
+   * @return bool
    */
-  public function bind_param_debug($types, &$v1 = null, &$v2 = null, &$v3 = null, &$v4 = null, &$v5 = null, &$v6 = null, &$v7 = null, &$v8 = null, &$v9 = null, &$v10 = null, &$v11 = null, &$v12 = null, &$v13 = null, &$v14 = null, &$v15 = null, &$v16 = null, &$v17 = null, &$v18 = null, &$v19 = null, &$v20 = null, &$v21 = null, &$v22 = null, &$v23 = null, &$v24 = null, &$v25 = null, &$v26 = null, &$v27 = null, &$v28 = null, &$v29 = null, &$v30 = null, &$v31 = null, &$v32 = null, &$v33 = null, &$v34 = null, &$v35 = null)
+  public function bind_param_debug(string $types, &...$v): bool
   {
     $this->_use_bound_parameters_interpolated = true;
 
     // debug_backtrace returns arguments by reference, see comments at http://php.net/manual/de/function.func-get-args.php
-    if (Bootup::is_php('5.4')) {
-      $trace = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 1);
-    } else {
-      $trace = debug_backtrace();
-    }
+    $trace = \debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 1);
 
     $args =& $trace[0]['args'];
-    $types = str_split($types);
+    $typesArray = \str_split($types);
 
-    $args_count = count($args) - 1;
-    $types_count = count($types);
+    $args_count = \count($args) - 1;
+    $types_count = \count($typesArray);
 
     if ($args_count !== $types_count) {
-      trigger_error('Number of variables doesn\'t match number of parameters in prepared statement', E_WARNING);
+      \trigger_error('Number of variables do not match number of parameters in prepared statement', E_WARNING);
 
       return false;
     }
 
     $arg = 1;
-    foreach ($types as $typeInner) {
+    foreach ($typesArray as $typeInner) {
       $val =& $args[$arg];
-      $this->_boundParams[] = array(
+      $this->_boundParams[] = [
           'type'  => $typeInner,
           'value' => &$val,
-      );
+      ];
       $arg++;
     }
 
@@ -215,7 +178,7 @@ final class Prepare extends \mysqli_stmt
    *
    * @return bool
    */
-  public function execute_raw()
+  public function execute_raw(): bool
   {
     return parent::execute();
   }
@@ -235,17 +198,17 @@ final class Prepare extends \mysqli_stmt
   {
     if ($this->_use_bound_parameters_interpolated === true) {
       $this->interpolateQuery();
-      call_user_func_array(array('parent', 'bind_param'), $this->_buildArguments());
+      \call_user_func_array(['parent', 'bind_param'], $this->_buildArguments());
     }
 
-    $query_start_time = microtime(true);
+    $query_start_time = \microtime(true);
     $result = parent::execute();
-    $query_duration = microtime(true) - $query_start_time;
+    $query_duration = \microtime(true) - $query_start_time;
 
     if ($result === true) {
 
       // "INSERT" || "REPLACE"
-      if (preg_match('/^\s*"?(INSERT|REPLACE)\s+/i', $this->_sql)) {
+      if (\preg_match('/^\s*"?(INSERT|REPLACE)\s+/i', $this->_sql)) {
         $insert_id = (int)$this->insert_id;
         $this->_debug->logQuery($this->_sql_with_bound_parameters, $query_duration, $insert_id);
 
@@ -253,7 +216,7 @@ final class Prepare extends \mysqli_stmt
       }
 
       // "UPDATE" || "DELETE"
-      if (preg_match('/^\s*"?(UPDATE|DELETE)\s+/i', $this->_sql)) {
+      if (\preg_match('/^\s*"?(UPDATE|DELETE)\s+/i', $this->_sql)) {
         $affected_rows = (int)$this->affected_rows;
         $this->_debug->logQuery($this->_sql_with_bound_parameters, $query_duration, $affected_rows);
 
@@ -261,7 +224,7 @@ final class Prepare extends \mysqli_stmt
       }
 
       // "SELECT"
-      if (preg_match('/^\s*"?(SELECT)\s+/i', $this->_sql)) {
+      if (\preg_match('/^\s*"?(SELECT)\s+/i', $this->_sql)) {
         $result = $this->get_result();
         $num_rows = (int)$result->num_rows;
         $this->_debug->logQuery($this->_sql_with_bound_parameters, $query_duration, $num_rows);
@@ -314,10 +277,10 @@ final class Prepare extends \mysqli_stmt
    *                      (DDL) statements.
    *                      </p>
    *
-   * @return bool false on error
+   * @return bool <p>false on error</p>
    * @since 5.0
    */
-  public function prepare($query)
+  public function prepare($query): bool
   {
     $this->_sql = $query;
     $this->_sql_with_bound_parameters = $query;
@@ -346,7 +309,7 @@ final class Prepare extends \mysqli_stmt
    *
    * @return array
    */
-  public function get_bound_params()
+  public function get_bound_params(): array
   {
     return $this->_boundParams;
   }
@@ -354,7 +317,7 @@ final class Prepare extends \mysqli_stmt
   /**
    * @return string
    */
-  public function get_sql()
+  public function get_sql(): string
   {
     return $this->_sql;
   }
@@ -364,7 +327,7 @@ final class Prepare extends \mysqli_stmt
    *
    * @return string
    */
-  public function get_sql_with_bound_parameters()
+  public function get_sql_with_bound_parameters(): string
   {
     return $this->_sql_with_bound_parameters;
   }
@@ -372,7 +335,7 @@ final class Prepare extends \mysqli_stmt
   /**
    * @return int
    */
-  public function insert_id()
+  public function insert_id(): int
   {
     return $this->insert_id;
   }
@@ -383,7 +346,7 @@ final class Prepare extends \mysqli_stmt
    *
    * @return string $testQuery - interpolated db query string
    */
-  private function interpolateQuery()
+  private function interpolateQuery(): string
   {
     $testQuery = $this->_sql;
     if ($this->_boundParams) {
@@ -393,12 +356,12 @@ final class Prepare extends \mysqli_stmt
         // set new values
         $param['value'] = $values[0];
         // we need to replace the question mark "?" here
-        $values[1] = str_replace('?', '###simple_mysqli__prepare_question_mark###', $values[1]);
+        $values[1] = \str_replace('?', '###simple_mysqli__prepare_question_mark###', $values[1]);
         // build the query (only for debugging)
-        $testQuery = preg_replace("/\?/", $values[1], $testQuery, 1);
+        $testQuery = \preg_replace("/\?/", $values[1], $testQuery, 1);
       }
       unset($param);
-      $testQuery = str_replace('###simple_mysqli__prepare_question_mark###', '?', $testQuery);
+      $testQuery = \str_replace('###simple_mysqli__prepare_question_mark###', '?', $testQuery);
     }
     $this->_sql_with_bound_parameters = $testQuery;
 
@@ -416,7 +379,7 @@ final class Prepare extends \mysqli_stmt
    *
    * @return bool
    */
-  private function queryErrorHandling($errorMsg, $sql)
+  private function queryErrorHandling(string $errorMsg, string $sql): bool
   {
     if ($errorMsg === 'DB server has gone away' || $errorMsg === 'MySQL server has gone away') {
       static $RECONNECT_COUNTER;

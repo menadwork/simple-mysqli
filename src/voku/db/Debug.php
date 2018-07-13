@@ -1,13 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace voku\db;
 
 use voku\db\exceptions\QueryException;
-use voku\helper\Bootup;
 use voku\helper\UTF8;
 
 /**
- * Debug: this handles debug and error-logging.
+ * Debug: This class can handle debug and error-logging for SQL-queries for the "Simple-MySQLi"-classes.
  *
  * @package   voku\db
  */
@@ -16,7 +17,7 @@ class Debug
   /**
    * @var array
    */
-  private $_errors = array();
+  private $_errors = [];
 
   /**
    * @var bool
@@ -77,18 +78,18 @@ class Debug
    *
    * @return bool
    */
-  public function checkForDev()
+  public function checkForDev(): bool
   {
     // init
     $return = false;
 
-    if (function_exists('checkForDev')) {
+    if (\function_exists('checkForDev')) {
       $return = checkForDev();
     } else {
 
       // for testing with dev-address
       $noDev = isset($_GET['noDev']) ? (int)$_GET['noDev'] : 0;
-      $remoteIpAddress = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : false;
+      $remoteIpAddress = $_SERVER['REMOTE_ADDR'] ?? false;
 
       if (
           $noDev != 1
@@ -113,9 +114,9 @@ class Debug
    *
    * @return bool
    */
-  public function clearErrors()
+  public function clearErrors(): bool
   {
-    $this->_errors = array();
+    $this->_errors = [];
 
     return true;
   }
@@ -136,31 +137,33 @@ class Debug
     $fileInfo = $this->getFileAndLineFromSql();
 
     $this->logger(
-        array(
+        [
             'error',
-            '<strong>' . date(
+            '<strong>' . \date(
                 'd. m. Y G:i:s'
             ) . ' (' . $fileInfo['file'] . ' line: ' . $fileInfo['line'] . ') (sql-error):</strong> ' . $error . '<br>',
-        )
+        ]
     );
 
     $this->_errors[] = $error;
 
-    if ($this->checkForDev() === true) {
-      if ($this->echo_on_error) {
-        $box_border = $this->css_mysql_box_border;
-        $box_bg = $this->css_mysql_box_bg;
+    if (
+        $this->echo_on_error
+        &&
+        $this->checkForDev() === true
+    ) {
+      $box_border = $this->css_mysql_box_border;
+      $box_bg = $this->css_mysql_box_bg;
 
-        echo '
-        <div class="OBJ-mysql-box" style="border:' . $box_border . '; background:' . $box_bg . '; padding:10px; margin:10px;">
-          <b style="font-size:14px;">MYSQL Error:</b>
-          <code style="display:block;">
-            file / line: ' . $fileInfo['file'] . ' / ' . $fileInfo['line'] . '
-            ' . $error . '
-          </code>
-        </div>
-        ';
-      }
+      echo '
+      <div class="OBJ-mysql-box" style="border:' . $box_border . '; background:' . $box_bg . '; padding:10px; margin:10px;">
+        <b style="font-size:14px;">MYSQL Error:</b>
+        <code style="display:block;">
+          file / line: ' . $fileInfo['file'] . ' / ' . $fileInfo['line'] . '
+          ' . $error . '
+        </code>
+      </div>
+      ';
     }
 
     if (
@@ -181,7 +184,7 @@ class Debug
    *
    * @return array
    */
-  public function getErrors()
+  public function getErrors(): array
   {
     return $this->_errors;
   }
@@ -191,18 +194,14 @@ class Debug
    *
    * @return array will return array['file'] and array['line']
    */
-  private function getFileAndLineFromSql()
+  private function getFileAndLineFromSql(): array
   {
     // init
-    $return = array();
+    $return = [];
     $file = '';
     $line = '';
 
-    if (Bootup::is_php('5.4') === true) {
-      $referrer = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
-    } else {
-      $referrer = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-    }
+    $referrer = \debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
 
     foreach ($referrer as $key => $ref) {
 
@@ -238,7 +237,7 @@ class Debug
   /**
    * @return string
    */
-  public function getLoggerClassName()
+  public function getLoggerClassName(): string
   {
     return $this->logger_class_name;
   }
@@ -246,7 +245,7 @@ class Debug
   /**
    * @return string
    */
-  public function getLoggerLevel()
+  public function getLoggerLevel(): string
   {
     return $this->logger_level;
   }
@@ -254,7 +253,7 @@ class Debug
   /**
    * @return boolean
    */
-  public function isEchoOnError()
+  public function isEchoOnError(): bool
   {
     return $this->echo_on_error;
   }
@@ -262,7 +261,7 @@ class Debug
   /**
    * @return boolean
    */
-  public function isExitOnError()
+  public function isExitOnError(): bool
   {
     return $this->exit_on_error;
   }
@@ -275,11 +274,11 @@ class Debug
    * @param int    $results field_count | insert_id | affected_rows
    * @param bool   $sql_error
    *
-   * @return bool
+   * @return mixed <p>Will return false, if no logging was used.</p>
    */
   public function logQuery($sql, $duration, $results, $sql_error = false)
   {
-    $logLevelUse = strtolower($this->logger_level);
+    $logLevelUse = \strtolower($this->logger_level);
 
     if (
         $sql_error === false
@@ -296,25 +295,30 @@ class Debug
     }
 
     // get extra info
-    $infoExtra = \mysqli_info($this->_db->getLink());
-    if ($infoExtra) {
-      $infoExtra = ' | info => ' . $infoExtra;
+    $infoExtra = '';
+    $tmpLink = $this->_db->getLink();
+    if ($tmpLink && $tmpLink instanceof \mysqli) {
+      /** @noinspection PhpUsageOfSilenceOperatorInspection */
+      $infoExtra = @\mysqli_info($tmpLink);
+      if ($infoExtra) {
+        $infoExtra = ' | info => ' . $infoExtra;
+      }
     }
 
     //
     // logging
     //
 
-    $info = 'time => ' . round($duration, 5) . ' | results => ' . (int)$results . $infoExtra . ' | SQL => ' . UTF8::htmlentities($sql);
+    $info = 'time => ' . \round($duration, 5) . ' | results => ' . (int)$results . $infoExtra . ' | SQL => ' . UTF8::htmlentities($sql);
 
     $fileInfo = $this->getFileAndLineFromSql();
 
     return $this->logger(
-        array(
+        [
             $logLevel,
-            '<strong>' . date('d. m. Y G:i:s') . ' (' . $fileInfo['file'] . ' line: ' . $fileInfo['line'] . '):</strong> ' . $info . '<br>',
+            '<strong>' . \date('d. m. Y G:i:s') . ' (' . $fileInfo['file'] . ' line: ' . $fileInfo['line'] . '):</strong> ' . $info . '<br>',
             'sql',
-        )
+        ]
     );
   }
 
@@ -329,7 +333,7 @@ class Debug
    *
    * @param string[] $log [method, text, type]<br />e.g.: array('error', 'this is a error', 'sql')
    *
-   * @return bool
+   * @return mixed <p>Will return false, if no logging was used.</p>
    */
   public function logger(array $log)
   {
@@ -351,9 +355,9 @@ class Debug
     if (
         $logClass
         &&
-        class_exists($logClass)
+        \class_exists($logClass)
         &&
-        method_exists($logClass, $logMethod)
+        \method_exists($logClass, $logMethod)
     ) {
       return $logClass::$logMethod($logText, $logType);
     }
@@ -370,30 +374,30 @@ class Debug
    */
   public function mailToAdmin($subject, $htmlBody, $priority = 3)
   {
-    if (function_exists('mailToAdmin')) {
+    if (\function_exists('mailToAdmin')) {
       mailToAdmin($subject, $htmlBody, $priority);
     } else {
 
       if ($priority === 3) {
         $this->logger(
-            array(
+            [
                 'debug',
                 $subject . ' | ' . $htmlBody,
-            )
+            ]
         );
       } elseif ($priority > 3) {
         $this->logger(
-            array(
+            [
                 'error',
                 $subject . ' | ' . $htmlBody,
-            )
+            ]
         );
       } elseif ($priority < 3) {
         $this->logger(
-            array(
+            [
                 'info',
                 $subject . ' | ' . $htmlBody,
-            )
+            ]
         );
       }
 

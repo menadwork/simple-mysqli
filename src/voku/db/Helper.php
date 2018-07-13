@@ -1,28 +1,90 @@
 <?php
 
+declare(strict_types=1);
+
 namespace voku\db;
 
 use voku\cache\Cache;
 use voku\helper\Phonetic;
 
 /**
- * Helper: this handles extra functions that use the "DB"-Class
+ * Helper: This class can handle extra functions that use the "Simple-MySQLi"-classes.
  *
  * @package   voku\db
  */
 class Helper
 {
   /**
+   * Optimize tables
+   *
+   * @param array   $tables       database table names
+   * @param DB|null $dbConnection <p>Use <strong>null</strong> to get your first singleton instance.</p>
+   *
+   * @return int
+   */
+  public static function optimizeTables(array $tables = [], DB $dbConnection = null): int
+  {
+    if ($dbConnection === null) {
+      $dbConnection = DB::getInstance();
+    }
+
+    $optimized = 0;
+    if (!empty($tables)) {
+      foreach ($tables as $table) {
+        $optimize = 'OPTIMIZE TABLE ' . $dbConnection->quote_string($table);
+        $result = $dbConnection->query($optimize);
+        if ($result) {
+          $optimized++;
+        }
+      }
+    }
+
+    return $optimized;
+  }
+
+  /**
+   * Repair tables
+   *
+   * @param array   $tables       database table names
+   * @param DB|null $dbConnection <p>Use <strong>null</strong> to get your first singleton instance.</p>
+   *
+   * @return int
+   */
+  public static function repairTables(array $tables = [], DB $dbConnection = null): int
+  {
+    if ($dbConnection === null) {
+      $dbConnection = DB::getInstance();
+    }
+
+    $optimized = 0;
+    if (!empty($tables)) {
+      foreach ($tables as $table) {
+        $optimize = 'REPAIR TABLE ' . $dbConnection->quote_string($table);
+        $result = $dbConnection->query($optimize);
+        if ($result) {
+          $optimized++;
+        }
+      }
+    }
+
+    return $optimized;
+  }
+
+  /**
    * Check if "mysqlnd"-driver is used.
    *
    * @return bool
    */
-  public static function isMysqlndIsUsed()
+  public static function isMysqlndIsUsed(): bool
   {
     static $_mysqlnd_is_used = null;
 
     if ($_mysqlnd_is_used === null) {
-      $_mysqlnd_is_used = (extension_loaded('mysqlnd') && function_exists('mysqli_fetch_all'));
+      $_mysqlnd_is_used = (
+          \extension_loaded('mysqlnd')
+          &&
+          \function_exists('mysqli_fetch_all')
+      );
     }
 
     return $_mysqlnd_is_used;
@@ -35,7 +97,7 @@ class Helper
    *
    * @return bool
    */
-  public static function isUtf8mb4Supported(DB $dbConnection = null)
+  public static function isUtf8mb4Supported(DB $dbConnection = null): bool
   {
     /**
      *  https://make.wordpress.org/core/2015/04/02/the-utf8mb4-upgrade/
@@ -86,22 +148,20 @@ class Helper
    * @param string      $searchString
    * @param string      $searchFieldName
    * @param string      $idFieldName
-   * @param string      $language <p>en, de, fr</p>
+   * @param string      $language     <p>en, de, fr</p>
    * @param string      $table
    * @param array       $whereArray
    * @param DB|null     $dbConnection <p>use <strong>null</strong> if you will use the current database-connection</p>
    * @param null|string $databaseName <p>use <strong>null</strong> if you will use the current database</p>
-   * @param bool        $useCache use cache?
-   * @param int         $cacheTTL cache-ttl in seconds
+   * @param bool        $useCache     use cache?
+   * @param int         $cacheTTL     cache-ttl in seconds
    *
    * @return array
    */
-  public static function phoneticSearch($searchString, $searchFieldName, $idFieldName = null, $language = 'de', $table, array $whereArray = null, DB $dbConnection = null, $databaseName = null, $useCache = false, $cacheTTL = 3600)
+  public static function phoneticSearch(string $searchString, string $searchFieldName, string $idFieldName = null, string $language = 'de', string $table = '', array $whereArray = null, DB $dbConnection = null, string $databaseName = null, bool $useCache = false, int $cacheTTL = 3600): array
   {
     // init
     $cacheKey = null;
-    $searchString = (string)$searchString;
-    $searchFieldName = (string)$searchFieldName;
 
     if ($dbConnection === null) {
       $dbConnection = DB::getInstance();
@@ -111,7 +171,7 @@ class Helper
       $debug = new Debug($dbConnection);
       $debug->displayError('Invalid table name, table name in empty.', false);
 
-      return array();
+      return [];
     }
 
     if ($idFieldName === null) {
@@ -136,7 +196,7 @@ class Helper
 
     if ($useCache === true) {
       $cache = new Cache(null, null, false, $useCache);
-      $cacheKey = 'sql-phonetic-search-' . md5($query);
+      $cacheKey = 'sql-phonetic-search-' . \md5($query);
 
       if (
           $cache->getCacheIsReady() === true
@@ -154,10 +214,10 @@ class Helper
 
     // make sure the row exists
     if ($result->num_rows <= 0) {
-      return array();
+      return [];
     }
 
-    $dataToSearchIn = array();
+    $dataToSearchIn = [];
     /** @noinspection LoopWhichDoesNotLoopInspection */
     /** @noinspection PhpAssignmentInConditionInspection */
     while ($tmpArray = $result->fetchArray()) {
@@ -190,7 +250,7 @@ class Helper
    *
    * @return string
    */
-  public static function get_mysql_client_version(DB $dbConnection = null)
+  public static function get_mysql_client_version(DB $dbConnection = null): string
   {
     static $_mysqli_client_version = null;
 
@@ -199,7 +259,7 @@ class Helper
     }
 
     if ($_mysqli_client_version === null) {
-      $_mysqli_client_version = \mysqli_get_client_version($dbConnection->getLink());
+      $_mysqli_client_version = (string)\mysqli_get_client_version($dbConnection->getLink());
     }
 
     return $_mysqli_client_version;
@@ -213,7 +273,7 @@ class Helper
    *
    * @return string
    */
-  public static function get_mysql_server_version(DB $dbConnection = null)
+  public static function get_mysql_server_version(DB $dbConnection = null): string
   {
     static $_mysqli_server_version = null;
 
@@ -222,7 +282,7 @@ class Helper
     }
 
     if ($_mysqli_server_version === null) {
-      $_mysqli_server_version = \mysqli_get_server_version($dbConnection->getLink());
+      $_mysqli_server_version = (string)\mysqli_get_server_version($dbConnection->getLink());
     }
 
     return $_mysqli_server_version;
@@ -238,9 +298,9 @@ class Helper
    *
    * @return array
    */
-  public static function getDbFields($table, $useStaticCache = true, DB $dbConnection = null, $databaseName = null)
+  public static function getDbFields(string $table, bool $useStaticCache = true, DB $dbConnection = null, string $databaseName = null): array
   {
-    static $DB_FIELDS_CACHE = array();
+    static $DB_FIELDS_CACHE = [];
 
     // use the static cache
     if (
@@ -252,7 +312,7 @@ class Helper
     }
 
     // init
-    $dbFields = array();
+    $dbFields = [];
 
     if ($dbConnection === null) {
       $dbConnection = DB::getInstance();
@@ -262,7 +322,7 @@ class Helper
       $debug = new Debug($dbConnection);
       $debug->displayError('Invalid table name, table name in empty.', false);
 
-      return array();
+      return [];
     }
 
     if ($databaseName) {
@@ -287,17 +347,17 @@ class Helper
   /**
    * Copy row within a DB table and making updates to the columns.
    *
-   * @param string  $table
-   * @param array   $whereArray
-   * @param array   $updateArray
-   * @param array   $ignoreArray
-   * @param DB|null $dbConnection <p>Use <strong>null</strong> to get your first singleton instance.</p>
+   * @param string      $table
+   * @param array       $whereArray
+   * @param array       $updateArray
+   * @param array       $ignoreArray
+   * @param DB|null     $dbConnection <p>Use <strong>null</strong> to get your first singleton instance.</p>
    * @param null|string $databaseName <p>use <strong>null</strong> if you will use the current database</p>
    *
    * @return bool|int "int" (insert_id) by "<b>INSERT / REPLACE</b>"-queries<br />
    *                   "false" on error
    */
-  public static function copyTableRow($table, array $whereArray, array $updateArray = array(), array $ignoreArray = array(), DB $dbConnection = null, $databaseName = null)
+  public static function copyTableRow(string $table, array $whereArray, array $updateArray = [], array $ignoreArray = [], DB $dbConnection = null, string $databaseName = null)
   {
     // init
     $table = trim($table);
@@ -337,14 +397,14 @@ class Helper
       while ($tmpArray = $result->fetchArray()) {
 
         // re-build a new DB query and ignore some field-names
-        $bindings = array();
+        $bindings = [];
         $insert_keys = '';
         $insert_values = '';
 
         foreach ($tmpArray as $fieldName => $value) {
 
-          if (!in_array($fieldName, $ignoreArray, true)) {
-            if (array_key_exists($fieldName, $updateArray)) {
+          if (!\in_array($fieldName, $ignoreArray, true)) {
+            if (\array_key_exists($fieldName, $updateArray)) {
               $insert_keys .= ',' . $fieldName;
               $insert_values .= ',?';
               $bindings[] = $updateArray[$fieldName]; // INFO: do not escape non selected data
@@ -365,6 +425,7 @@ class Helper
           VALUES 
           (' . $insert_values . ')
         ';
+
         return $dbConnection->query($new_query, $bindings);
       }
     }
