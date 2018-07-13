@@ -347,7 +347,8 @@ class Helper
   /**
    * Copy row within a DB table and making updates to the columns.
    *
-   * @param string      $table
+   * @param string      $tableSelect
+   * @param string      $tableInsert
    * @param array       $whereArray
    * @param array       $updateArray
    * @param array       $ignoreArray
@@ -357,20 +358,24 @@ class Helper
    * @return bool|int "int" (insert_id) by "<b>INSERT / REPLACE</b>"-queries<br />
    *                   "false" on error
    */
-  public static function copyTableRow(string $table, array $whereArray, array $updateArray = [], array $ignoreArray = [], DB $dbConnection = null, string $databaseName = null)
+  public static function copyTableRow(string $tableSelect, string $tableInsert, array $whereArray, array $updateArray = [], array $ignoreArray = [], DB $dbConnection = null, string $databaseName = null)
   {
     // init
-    $table = trim($table);
+    $tableSelect = trim($tableSelect);
 
     if ($dbConnection === null) {
       $dbConnection = DB::getInstance();
     }
 
-    if ($table === '') {
+    if ($tableSelect === '') {
       $debug = new Debug($dbConnection);
       $debug->displayError('Invalid table name, table name in empty.', false);
 
       return false;
+    }
+
+    if ($tableInsert === '') {
+      $tableInsert = $tableSelect;
     }
 
     $whereSQL = $dbConnection->_parseArrayPair($whereArray, 'AND');
@@ -383,7 +388,7 @@ class Helper
     }
 
     // get the row
-    $query = 'SELECT * FROM ' . $databaseName . $dbConnection->quote_string($table) . '
+    $query = 'SELECT * FROM ' . $databaseName . $dbConnection->quote_string($tableSelect) . '
       WHERE 1 = 1
       ' . $whereSQL . '
     ';
@@ -420,7 +425,7 @@ class Helper
         $insert_values = ltrim($insert_values, ',');
 
         // insert the "copied" row
-        $new_query = 'INSERT INTO ' . $databaseName . $dbConnection->quote_string($table) . ' 
+        $new_query = 'INSERT INTO ' . $databaseName . $dbConnection->quote_string($tableInsert) . ' 
           (' . $insert_keys . ')
           VALUES 
           (' . $insert_values . ')
